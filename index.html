@@ -42,5 +42,223 @@
         <p class="text-zinc-500 font-bold uppercase text-[10px] tracking-[0.4em] mt-2">Distribución Nacional Bolivia</p>
     </header>
 
-    <nav class="flex
+    <nav class="flex justify-center gap-2 mb-8 px-4 sticky top-0 z-50 py-4 glass border-b border-white/5 overflow-x-auto no-scrollbar">
+        <button onclick="filterCat('todas', this)" class="bg-green-500 text-black px-6 py-2 rounded-full text-xs font-black uppercase whitespace-nowrap">Todas</button>
+        <button onclick="filterCat('llanta', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Llantas</button>
+        <button onclick="filterCat('casco', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Cascos</button>
+        <button onclick="filterCat('accesorio', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Accesorios</button>
+    </nav>
+
+    <main id="grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-6 pb-32"></main>
+
+    <button onclick="toggleCart()" class="fixed bottom-6 right-6 z-[60] bg-green-600 p-5 rounded-2xl shadow-2xl transition-all active:scale-90 border-2 border-green-400/20">
+        <span id="badge" class="absolute -top-2 -right-2 bg-white text-green-700 font-black text-[10px] w-6 h-6 rounded-full flex items-center justify-center">0</span>
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+    </button>
+
+    <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[65] hidden"></div>
+    <aside class="cart-sidebar fixed top-0 right-0 h-full w-full max-w-md bg-zinc-950 z-[70] shadow-2xl p-8 flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-black italic uppercase italic">Finalizar <span class="text-green-500">Pedido</span></h2>
+            <button onclick="toggleCart()" class="text-zinc-600 hover:text-white text-xs font-black">CERRAR</button>
+        </div>
+
+        <div class="space-y-4 mb-6">
+            <input type="text" id="nombreCliente" placeholder="Tu Nombre o Tienda" class="form-input">
+            
+            <div class="grid grid-cols-2 gap-2">
+                <select id="departamento" onchange="updateCiudades()" class="form-input text-xs">
+                    <option value="" disabled selected>Departamento</option>
+                    <option value="Santa Cruz">Santa Cruz</option>
+                    <option value="La Paz">La Paz</option>
+                    <option value="Cochabamba">Cochabamba</option>
+                    <option value="Oruro">Oruro</option>
+                    <option value="Potosí">Potosí</option>
+                    <option value="Tarija">Tarija</option>
+                    <option value="Chuquisaca">Chuquisaca</option>
+                    <option value="Beni">Beni</option>
+                    <option value="Pando">Pando</option>
+                </select>
+
+                <select id="ciudad" class="form-input text-xs" disabled>
+                    <option value="" disabled selected>Ciudad</option>
+                </select>
+            </div>
+
+            <div class="bg-zinc-900/50 p-4 rounded-2xl border border-white/5 space-y-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="quiereFactura" onchange="toggleFactura()" class="w-4 h-4 accent-green-500">
+                    <span class="text-[10px] text-zinc-300 uppercase font-black tracking-widest">¿Necesitas Factura?</span>
+                </label>
+                <div id="camposFactura" class="hidden space-y-2">
+                    <input type="text" id="razonSocial" placeholder="Razón Social" class="form-input text-xs">
+                    <input type="text" id="nitCliente" placeholder="NIT / CI" class="form-input text-xs">
+                </div>
+            </div>
+        </div>
+
+        <div id="cartItems" class="flex-grow overflow-y-auto space-y-3 border-t border-zinc-900 pt-4"></div>
+
+        <div class="mt-6 pt-6 border-t border-zinc-900">
+            <div class="flex justify-between items-end mb-6">
+                <span id="cartTotal" class="text-3xl font-black text-white">0 BS</span>
+            </div>
+            <button onclick="sendWA()" class="w-full bg-green-600 hover:bg-green-500 py-5 rounded-2xl text-white font-black uppercase tracking-widest transition-all shadow-xl">
+                Confirmar Pedido
+            </button>
+        </div>
+    </aside>
+
+    <div id="qrModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] hidden flex items-center justify-center p-4">
+        <div class="glass max-w-sm w-full p-8 rounded-[2.5rem] text-center border-green-500/30">
+            <h3 class="text-2xl font-black italic uppercase mb-2">Pago <span class="text-green-500">Rápido</span></h3>
+            <p class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-6">Escanea para pagar</p>
+            <div class="bg-white p-4 rounded-3xl mb-6 inline-block">
+                <img src="Qr_pagos.png" alt="QR de Pago" class="w-48 h-48 object-contain">
+            </div>
+            <button onclick="finalizarTodo()" class="w-full bg-green-600 py-4 rounded-2xl text-white font-black uppercase transition-all mb-4">Ya pagué, enviar pedido</button>
+            <button onclick="cerrarQR()" class="text-zinc-500 text-[10px] font-black uppercase hover:text-white">Omitir y enviar solo pedido</button>
+        </div>
+    </div>
+
+    <script>
+        const ciudadesBolivia = {
+            "Santa Cruz": ["Santa Cruz de la Sierra", "Montero", "Warnes", "La Guardia", "El Torno", "Puerto Suárez", "San Ignacio", "Camiri", "Yapacaní"],
+            "La Paz": ["La Paz", "El Alto", "Viacha", "Caranavi", "Achacachi", "Copacabana", "Patacamaya"],
+            "Cochabamba": ["Cochabamba", "Sacaba", "Quillacollo", "Colcapirhua", "Tiquipaya", "Punata", "Villa Tunari"],
+            "Oruro": ["Oruro", "Huanuni", "Challapata"],
+            "Potosí": ["Potosí", "Uyuni", "Llallagua", "Tupiza", "Villazón"],
+            "Tarija": ["Tarija", "Yacuiba", "Bermejo", "Villamontes"],
+            "Chuquisaca": ["Sucre", "Monteagudo", "Camargo"],
+            "Beni": ["Trinidad", "Riberalta", "Guayaramerín", "San Borja", "Rurrenabaque"],
+            "Pando": ["Cobija", "Porvenir"]
+        };
+
+        let db = [];
+        let cart = [];
+        const WA_NUMBER = "59171483922";
+
+        async function init() {
+            try {
+                const res = await fetch('llantas_limpias.json');
+                db = await res.json();
+                render(db);
+            } catch (e) { console.error("Error al cargar JSON."); }
+        }
+
+        function updateCiudades() {
+            const dep = document.getElementById('departamento').value;
+            const citySelect = document.getElementById('ciudad');
+            citySelect.innerHTML = '<option value="" disabled selected>Ciudad</option>';
+            if (ciudadesBolivia[dep]) {
+                citySelect.disabled = false;
+                ciudadesBolivia[dep].forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.textContent = c; citySelect.appendChild(opt);
+                });
+            }
+        }
+
+        function toggleFactura() {
+            document.getElementById('camposFactura').classList.toggle('hidden', !document.getElementById('quiereFactura').checked);
+        }
+
+        function render(items) {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = items.map((l, i) => `
+                <div class="glass p-8 rounded-[2.5rem] flex flex-col justify-between h-full" data-aos="fade-up">
+                    <div class="flex justify-between items-start mb-6">
+                        <span class="bg-zinc-800 text-zinc-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase">${l.marca || 'Zunny'}</span>
+                        <span class="text-3xl font-black text-white">${l.precio} BS</span>
+                    </div>
+                    <h3 class="text-2xl font-black text-white mb-2 tracking-tighter">${l.medida || l.nombre}</h3>
+                    <div class="mt-auto space-y-4 pt-6">
+                        <div class="flex items-center justify-center gap-4 bg-black/40 p-2 rounded-2xl border border-white/5">
+                            <button onclick="stepQty('input-${i}', -1)" class="w-10 h-10 rounded-xl bg-zinc-800 text-white font-bold">-</button>
+                            <input type="number" id="input-${i}" value="1" min="1" class="w-12 bg-transparent text-center font-black text-lg outline-none">
+                            <button onclick="stepQty('input-${i}', 1)" class="w-10 h-10 rounded-xl bg-zinc-800 text-white font-bold">+</button>
+                        </div>
+                        <button onclick="addToCartFromCard(${i})" class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase hover:bg-green-600 hover:text-white transition-all">Añadir</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function stepQty(id, delta) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) + delta;
+            input.value = val < 1 ? 1 : val;
+        }
+
+        function addToCartFromCard(index) {
+            const p = db[index];
+            const qty = parseInt(document.getElementById(`input-${index}`).value);
+            const medida = p.medida || p.nombre;
+            const existing = cart.find(x => x.medida === medida);
+            if(existing) { existing.qty += qty; } else { cart.push({ medida, precio: p.precio, marca: p.marca || 'Zunny', qty }); }
+            document.getElementById(`input-${index}`).value = 1;
+            updateUI();
+        }
+
+        function updateUI() {
+            const list = document.getElementById('cartItems');
+            const total = document.getElementById('cartTotal');
+            const badge = document.getElementById('badge');
+            let sum = 0, count = 0;
+            list.innerHTML = cart.map((x, i) => {
+                sum += x.precio * x.qty;
+                count += x.qty;
+                return `<div class="bg-zinc-900/50 p-4 rounded-2xl border border-white/5 flex justify-between items-center">
+                    <div><h4 class="text-white font-bold text-[11px] uppercase">${x.medida}</h4><p class="text-[9px] text-zinc-500 uppercase font-black">${x.qty}x · ${x.precio * x.qty} BS</p></div>
+                    <button onclick="remove(${i})" class="text-red-500 text-[10px] font-black uppercase px-2">Borrar</button>
+                </div>`;
+            }).join('');
+            total.innerText = `${sum} BS`;
+            badge.innerText = count;
+        }
+
+        function remove(i) { cart.splice(i, 1); updateUI(); }
+        function toggleCart() { document.body.classList.toggle('cart-active'); document.getElementById('overlay').classList.toggle('hidden'); }
         
+        function filterCat(cat, btn) {
+            document.querySelectorAll('nav button').forEach(b => b.className = "text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap");
+            btn.className = "bg-green-500 text-black px-6 py-2 rounded-full text-xs font-black uppercase whitespace-nowrap";
+            render(cat === 'todas' ? db : db.filter(i => (i.categoria || 'llanta').toLowerCase() === cat));
+        }
+
+        function sendWA() {
+            const n = document.getElementById('nombreCliente').value;
+            const d = document.getElementById('departamento').value;
+            const c = document.getElementById('ciudad').value;
+            if(!n || !d || !c) return alert("⚠️ Llena tus datos de ubicación.");
+            if(cart.length === 0) return alert("⚠️ Pedido vacío.");
+            document.getElementById('qrModal').classList.remove('hidden');
+        }
+
+        function cerrarQR() { document.getElementById('qrModal').classList.add('hidden'); ejecutarEnvioWA(false); }
+        function finalizarTodo() { document.getElementById('qrModal').classList.add('hidden'); ejecutarEnvioWA(true); }
+
+        function ejecutarEnvioWA(conPago) {
+            const n = document.getElementById('nombreCliente').value;
+            const d = document.getElementById('departamento').value;
+            const c = document.getElementById('ciudad').value;
+            const f = document.getElementById('quiereFactura').checked;
+            const rs = document.getElementById('razonSocial').value;
+            const nit = document.getElementById('nitCliente').value;
+            const folio = `ZM-${new Date().getFullYear()}-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
+            
+            if(f && (!rs || !nit)) return alert("⚠️ NIT y Razón Social son obligatorios.");
+
+            let msg = `*ZUNNY MOTOS - ${conPago ? 'PAGO CONFIRMADO' : 'NUEVO PEDIDO'}*\n🔖 *FOLIO:* ${folio}\n\n👤 *CLIENTE:* ${n.toUpperCase()}\n📍 *ORIGEN:* ${d} - ${c}\n`;
+            if(f) msg += `📄 *FACTURA:* ${rs.toUpperCase()} (NIT: ${nit})\n`;
+            msg += `--------------------------------\n`;
+            cart.forEach(x => msg += `🛞 ${x.qty}x ${x.marca} ${x.medida} (${x.precio * x.qty} BS)\n`);
+            msg += `\n💰 *TOTAL FINAL: ${cart.reduce((a, b) => a + (b.precio*b.qty), 0)} BS*`;
+            window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        AOS.init();
+        init();
+    </script>
+</body>
+</html>
