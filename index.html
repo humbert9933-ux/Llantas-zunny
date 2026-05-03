@@ -1,37 +1,210 @@
-function mostrarResultados(lista) {
-    const contenedor = document.getElementById('listaResultados');
-    if (lista.length === 0) {
-        contenedor.innerHTML = `<p class="text-center text-zinc-500 py-10">No se encontraron medidas.</p>`;
-        return;
-    }
-
-    contenedor.innerHTML = lista.map(item => {
-        // Mensaje automático con los datos de la llanta
-        const mensaje = encodeURIComponent(
-            `Hola, me interesa la llanta ${item.marca} medida ${item.medida}.\n` +
-            `Descripción: ${item.descripcion}\n` +
-            `Precio: ${item.precio} BS`
-        );
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zunny Motos | Cotizador Mayorista</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <style>
+        :root { --accent: #22c55e; }
+        body { 
+            background: #09090b; 
+            color: #fafafa; 
+            font-family: 'Inter', system-ui, sans-serif;
+            background-image: url('https://www.transparenttextures.com/patterns/dark-tire.png');
+            background-attachment: fixed;
+            overflow-x: hidden;
+        }
+        .glass { 
+            background: rgba(24, 24, 27, 0.7); 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.08); 
+        }
+        .card-anim { transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .card-anim:hover { transform: translateY(-10px) scale(1.02); border-color: var(--accent); }
         
-        // Tu número de contacto configurado
-        const miNumero = "59171483922"; 
+        /* Animación del Carrito Lateral */
+        .cart-sidebar { 
+            transform: translateX(100%); 
+            transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1); 
+        }
+        .cart-active .cart-sidebar { transform: translateX(0); }
+        
+        /* Botón con pulso dinámico */
+        @keyframes shadow-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .pulse { animation: shadow-pulse 2s infinite; }
+        
+        /* Barra de búsqueda con resplandor */
+        #buscador:focus { box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
+    </style>
+</head>
+<body class="antialiased">
 
-        return `
-            <div class="glass-card p-4 rounded-xl shadow-lg mb-4 border border-zinc-800">
-                <div class="flex justify-between items-center mb-3">
+    <header class="max-w-5xl mx-auto pt-12 pb-8 px-6 text-center" data-aos="zoom-out">
+        <div class="inline-block bg-green-500/10 text-green-500 px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase mb-4 border border-green-500/20">
+            Stock Real 2026
+        </div>
+        <h1 class="text-6xl font-black italic tracking-tighter mb-2">
+            ZUNNY<span class="text-green-500 text-7xl">.</span>
+        </h1>
+        <p class="text-zinc-500 font-medium uppercase text-[10px] tracking-[0.3em]">Importadora de Llantas Bolivia</p>
+    </header>
+
+    <section class="sticky top-0 z-40 py-6 px-4 mb-8 glass border-b border-white/5">
+        <div class="max-w-xl mx-auto relative group">
+            <input type="text" id="buscador" placeholder="Busca por medida o marca..." 
+                class="w-full bg-zinc-900 border-2 border-zinc-800 rounded-2xl py-4 px-6 text-white focus:outline-none focus:border-green-500 transition-all duration-300">
+            <div class="absolute right-4 top-4 text-zinc-600 group-focus-within:text-green-500">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+        </div>
+    </section>
+
+    <main id="grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-6 pb-32"></main>
+
+    <button onclick="toggleCart()" class="fixed bottom-8 right-8 z-50 bg-green-600 p-5 rounded-3xl shadow-2xl pulse hover:scale-110 active:scale-90 transition-all">
+        <span id="badge" class="absolute -top-3 -right-3 bg-white text-green-700 font-black text-xs w-7 h-7 rounded-full flex items-center justify-center shadow-lg">0</span>
+        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+    </button>
+
+    <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] hidden opacity-0 transition-opacity duration-300"></div>
+    <aside class="cart-sidebar fixed top-0 right-0 h-full w-full max-w-md bg-zinc-950 z-[60] shadow-[-20px_0_50px_rgba(0,0,0,0.5)] p-8 flex flex-col">
+        <div class="flex justify-between items-center mb-10">
+            <div>
+                <h2 class="text-3xl font-black italic uppercase">Tu <span class="text-green-500">Lista</span></h2>
+                <p class="text-zinc-500 text-xs">Resumen de cotización</p>
+            </div>
+            <button onclick="toggleCart()" class="w-10 h-10 flex items-center justify-center rounded-full bg-zinc-900 text-zinc-400 hover:text-white">✕</button>
+        </div>
+
+        <div id="cartItems" class="flex-grow overflow-y-auto space-y-4">
+            </div>
+
+        <div class="mt-8 pt-8 border-t border-zinc-900">
+            <div class="flex justify-between items-center mb-6">
+                <span class="text-zinc-400 font-bold uppercase text-xs">Total:</span>
+                <span id="cartTotal" class="text-4xl font-black text-white">0 BS</span>
+            </div>
+            <button onclick="sendWA()" class="w-full bg-green-600 hover:bg-green-500 py-5 rounded-2xl text-white font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all">
+                Enviar a WhatsApp
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2M12.05 3.67C14.25 3.67 16.31 4.53 17.87 6.09C19.42 7.65 20.28 9.72 20.28 11.92C20.28 16.46 16.58 20.15 12.04 20.15C10.66 20.15 9.3 19.8 8.1 19.14L7.81 18.98L4.67 19.8L5.5 16.71L5.33 16.44C4.6 15.27 4.21 13.91 4.21 12.5C4.21 12.31 4.21 12.11 4.22 11.92C4.22 7.65 7.92 3.96 12.47 3.96C12.33 3.96 12.19 3.96 12.05 3.96M9.53 7.62C9.36 7.62 9.09 7.69 8.86 7.93C8.63 8.17 8 8.76 8 9.96C8 11.17 8.87 12.33 9 12.5C9.12 12.67 10.72 15.15 13.17 16.21C13.75 16.46 14.21 16.61 14.56 16.72C15.14 16.9 15.67 16.87 16.09 16.81C16.56 16.74 17.53 16.22 17.73 15.66C17.93 15.1 17.93 14.62 17.87 14.53C17.81 14.44 17.63 14.38 17.37 14.25C17.11 14.12 15.82 13.48 15.58 13.39C15.34 13.3 15.17 13.26 15 13.5C14.83 13.74 14.36 14.3 14.21 14.47C14.07 14.63 13.93 14.66 13.67 14.53C13.41 14.4 12.58 14.13 11.59 13.25C10.82 12.56 10.3 11.71 10.15 11.45C10 11.19 10.14 11.05 10.27 10.92C10.39 10.8 10.53 10.62 10.67 10.45C10.8 10.28 10.85 10.16 10.93 10C11 9.84 10.97 9.7 10.92 9.58C10.88 9.46 10.45 8.41 10.27 7.97C10.09 7.54 9.91 7.6 9.78 7.6C9.65 7.6 9.53 7.6 9.53 7.6Z"/></svg>
+            </button>
+        </div>
+    </aside>
+
+    <script>
+        let db = [];
+        let cart = [];
+        const WA_NUMBER = "59171483922";
+
+        AOS.init({ duration: 800, once: true });
+
+        async function init() {
+            try {
+                const res = await fetch('llantas_limpias.json');
+                db = await res.json();
+                render(db);
+            } catch (e) {
+                console.error("Falta el JSON en el repositorio.");
+            }
+        }
+
+        function render(items) {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = items.map((l, i) => `
+                <div class="glass p-8 rounded-[2.5rem] card-anim flex flex-col justify-between h-full" data-aos="fade-up" data-aos-delay="${(i % 3) * 100}">
                     <div>
-                        <span class="text-[10px] font-bold text-green-500 uppercase tracking-widest">${item.marca}</span>
-                        <p class="text-xl font-bold text-white">${item.medida}</p>
-                        <p class="text-[10px] text-zinc-500 uppercase">${item.descripcion.substring(0, 40)}...</p>
+                        <div class="flex justify-between items-start mb-6">
+                            <span class="bg-green-500/10 text-green-500 text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter">${l.marca}</span>
+                            <div class="text-right">
+                                <span class="text-3xl font-black text-white">${l.precio}</span>
+                                <span class="block text-[10px] text-zinc-500 font-bold uppercase">Bolivianos</span>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-black text-white mb-2 tracking-tighter">${l.medida}</h3>
+                        <p class="text-[11px] text-zinc-500 uppercase leading-relaxed mb-8">${l.descripcion}</p>
                     </div>
-                    <div class="text-right">
-                        <p class="text-3xl font-black text-white">${item.precio}</p>
-                        <p class="text-[10px] text-zinc-400">BOLIVIANOS</p>
-                    </div>
+                    <button onclick="addToCart('${l.medida}', ${l.precio}, '${l.marca}')" 
+                        class="w-full bg-zinc-100 text-black py-4 rounded-2xl font-black uppercase tracking-tighter hover:bg-green-500 hover:text-white transition-colors active:scale-95 shadow-xl">
+                        Añadir +
+                    </button>
                 </div>
-                
-                <a href="https://wa.me/${miNumero}?text=${mensaje}" 
-                   target="_blank"
-                   class="w-full bg-green-600 hover:bg-green-700 text-white text-center py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg">
-                   <svg style="width:2
-                       
+            `).join('');
+        }
+
+        function addToCart(medida, precio, marca) {
+            const item = cart.find(x => x.medida === medida);
+            if(item) { item.qty++; } else { cart.push({medida, precio, marca, qty: 1}); }
+            updateUI();
+        }
+
+        function updateUI() {
+            const list = document.getElementById('cartItems');
+            const total = document.getElementById('cartTotal');
+            const badge = document.getElementById('badge');
+            
+            let sum = 0;
+            let count = 0;
+
+            list.innerHTML = cart.map((x, i) => {
+                sum += x.precio * x.qty;
+                count += x.qty;
+                return `
+                    <div class="bg-zinc-900/50 p-5 rounded-3xl border border-white/5 flex justify-between items-center">
+                        <div>
+                            <h4 class="text-white font-black text-sm">${x.medida}</h4>
+                            <p class="text-[10px] text-zinc-500 uppercase font-bold">${x.marca} · ${x.precio} BS</p>
+                        </div>
+                        <div class="flex items-center gap-4 bg-black/40 px-3 py-2 rounded-2xl border border-white/5">
+                            <button onclick="changeQty(${i}, -1)" class="text-zinc-500 hover:text-white font-bold">-</button>
+                            <span class="text-white font-black text-xs">${x.qty}</span>
+                            <button onclick="changeQty(${i}, 1)" class="text-zinc-500 hover:text-white font-bold">+</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            total.innerText = `${sum} BS`;
+            badge.innerText = count;
+        }
+
+        function changeQty(i, delta) {
+            cart[i].qty += delta;
+            if(cart[i].qty <= 0) cart.splice(i, 1);
+            updateUI();
+        }
+
+        function toggleCart() {
+            document.body.classList.toggle('cart-active');
+            const overlay = document.getElementById('overlay');
+            overlay.classList.toggle('hidden');
+            setTimeout(() => overlay.classList.toggle('opacity-100'), 10);
+        }
+
+        function sendWA() {
+            if(cart.length === 0) return alert("Tu carrito está vacío.");
+            let msg = `*ZUNNY MOTOS - COTIZACIÓN MAYORISTA*\n--------------------------------\n`;
+            let total = 0;
+            cart.forEach(x => {
+                msg += `🛞 ${x.qty}x ${x.marca} (${x.medida})\n   Subtotal: ${x.precio * x.qty} BS\n\n`;
+                total += x.precio * x.qty;
+            });
+            msg += `--------------------------------\n💰 *TOTAL A PAGAR: ${total} BS*`;
+            window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        document.getElementById('buscador').addEventListener('input', e => {
+            const query = e.target.value.toLowerCase();
+            render(db.filter(x => x.medida.toLowerCase().includes(query) || x.marca.toLowerCase().includes(query)));
+        });
+
+        init();
+    </script>
+</body>
+</html>
