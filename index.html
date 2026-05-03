@@ -43,5 +43,184 @@
 
     <nav class="flex justify-center gap-2 mb-8 px-4 sticky top-0 z-50 py-4 glass border-b border-white/5 overflow-x-auto no-scrollbar">
         <button onclick="filterCat('todas', this)" class="bg-green-500 text-black px-6 py-2 rounded-full text-xs font-black uppercase whitespace-nowrap">Todas</button>
-        <button onclick="filterCat('llanta', this)" class="
+        <button onclick="filterCat('llanta', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Llantas</button>
+        <button onclick="filterCat('casco', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Cascos</button>
+        <button onclick="filterCat('accesorio', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Accesorios</button>
+    </nav>
+
+    <main id="grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-6 pb-32"></main>
+
+    <button onclick="toggleCart()" class="fixed bottom-6 right-6 z-[60] bg-green-600 p-5 rounded-2xl shadow-2xl transition-all active:scale-90 border-2 border-green-400/20">
+        <span id="badge" class="absolute -top-2 -right-2 bg-white text-green-700 font-black text-[10px] w-6 h-6 rounded-full flex items-center justify-center">0</span>
+        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+    </button>
+
+    <div id="overlay" onclick="toggleCart()" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[65] hidden"></div>
+    <aside class="cart-sidebar fixed top-0 right-0 h-full w-full max-w-md bg-zinc-950 z-[70] shadow-2xl p-8 flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-black italic uppercase italic">Mi <span class="text-green-500">Pedido</span></h2>
+            <button onclick="toggleCart()" class="text-zinc-600 hover:text-white text-sm font-bold uppercase">Cerrar</button>
+        </div>
+
+        <div class="space-y-4 mb-6">
+            <div>
+                <label class="block text-[9px] text-zinc-500 uppercase font-black mb-1 tracking-widest">Nombre del Cliente / Tienda</label>
+                <input type="text" id="nombreCliente" placeholder="Ej: Repuestos El Rayo" class="form-input">
+            </div>
+            <div>
+                <label class="block text-[9px] text-zinc-500 uppercase font-black mb-1 tracking-widest">Departamento</label>
+                <select id="departamento" class="form-input">
+                    <option value="" disabled selected>Selecciona ubicación...</option>
+                    <option value="Santa Cruz">Santa Cruz</option>
+                    <option value="La Paz">La Paz</option>
+                    <option value="Cochabamba">Cochabamba</option>
+                    <option value="Beni">Beni</option>
+                    <option value="Pando">Pando</option>
+                    <option value="Oruro">Oruro</option>
+                    <option value="Potosí">Potosí</option>
+                    <option value="Chuquisaca">Chuquisaca</option>
+                    <option value="Tarija">Tarija</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="cartItems" class="flex-grow overflow-y-auto space-y-3 border-t border-zinc-900 pt-4"></div>
+
+        <div class="mt-6 pt-6 border-t border-zinc-900">
+            <div class="flex justify-between items-end mb-6">
+                <span class="text-zinc-500 font-bold text-xs uppercase tracking-widest">Total Estimado</span>
+                <span id="cartTotal" class="text-3xl font-black text-white">0 BS</span>
+            </div>
+            <button onclick="sendWA()" class="w-full bg-green-600 hover:bg-green-500 py-5 rounded-2xl text-white font-black uppercase tracking-widest transition-all shadow-xl flex items-center justify-center gap-2">
+                Enviar Cotización
+            </button>
+        </div>
+    </aside>
+
+    <script>
+        let db = [];
+        let cart = [];
+        const WA_NUMBER = "59171483922";
+
+        AOS.init({ duration: 800, once: true });
+
+        async function init() {
+            try {
+                const res = await fetch('llantas_limpias.json');
+                db = await res.json();
+                render(db);
+            } catch (e) { console.error("Error DB."); }
+        }
+
+        function render(items) {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = items.map((l, i) => `
+                <div class="glass p-8 rounded-[2.5rem] flex flex-col justify-between h-full group border-transparent hover:border-green-500/30 transition-all duration-500" data-aos="fade-up">
+                    <div>
+                        <div class="flex justify-between items-start mb-6">
+                            <span class="bg-zinc-800 text-zinc-400 text-[10px] px-3 py-1 rounded-full font-bold uppercase">${l.marca || 'Zunny'}</span>
+                            <span class="text-3xl font-black text-white">${l.precio} BS</span>
+                        </div>
+                        <h3 class="text-2xl font-black text-white mb-2 tracking-tighter">${l.medida || l.nombre}</h3>
+                        <p class="text-[10px] text-zinc-500 uppercase leading-relaxed mb-8">${l.descripcion || 'Alta Resistencia'}</p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-center gap-4 bg-black/40 p-2 rounded-2xl border border-white/5">
+                            <button onclick="stepQty('input-${i}', -1)" class="w-10 h-10 rounded-xl bg-zinc-800 text-white font-bold">-</button>
+                            <input type="number" id="input-${i}" value="1" min="1" class="qty-input w-12 bg-transparent text-center font-black text-lg focus:outline-none">
+                            <button onclick="stepQty('input-${i}', 1)" class="w-10 h-10 rounded-xl bg-zinc-800 text-white font-bold">+</button>
+                        </div>
+                        <button onclick="addToCartFromCard(${i})" 
+                            class="w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-tighter hover:bg-green-600 hover:text-white transition-all shadow-xl">
+                            Añadir al Pedido
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function stepQty(id, delta) {
+            const input = document.getElementById(id);
+            let val = parseInt(input.value) + delta;
+            input.value = val < 1 ? 1 : val;
+        }
+
+        function addToCartFromCard(index) {
+            const product = db[index];
+            const qty = parseInt(document.getElementById(`input-${index}`).value);
+            const medida = product.medida || product.nombre;
+
+            const existing = cart.find(x => x.medida === medida);
+            if(existing) { existing.qty += qty; } 
+            else { cart.push({ medida, precio: product.precio, marca: product.marca || 'Zunny', qty }); }
             
+            document.getElementById(`input-${index}`).value = 1;
+            updateUI();
+            
+            const badge = document.getElementById('badge');
+            badge.classList.add('scale-150', 'bg-green-500');
+            setTimeout(() => badge.classList.remove('scale-150', 'bg-green-500'), 300);
+        }
+
+        function updateUI() {
+            const list = document.getElementById('cartItems');
+            const total = document.getElementById('cartTotal');
+            const badge = document.getElementById('badge');
+            let sum = 0, count = 0;
+
+            list.innerHTML = cart.map((x, i) => {
+                sum += x.precio * x.qty;
+                count += x.qty;
+                return `
+                    <div class="bg-zinc-900/50 p-4 rounded-2xl border border-white/5 flex justify-between items-center">
+                        <div>
+                            <h4 class="text-white font-bold text-[11px] uppercase">${x.medida}</h4>
+                            <p class="text-[9px] text-zinc-500 uppercase font-black">${x.qty} unidades · ${x.precio * x.qty} BS</p>
+                        </div>
+                        <button onclick="remove(${i})" class="text-red-500 text-[10px] font-black uppercase px-2 hover:bg-red-500/10 rounded-lg py-1 transition-all">Borrar</button>
+                    </div>
+                `;
+            }).join('');
+            total.innerText = `${sum} BS`;
+            badge.innerText = count;
+        }
+
+        function remove(i) { cart.splice(i, 1); updateUI(); }
+
+        function toggleCart() {
+            document.body.classList.toggle('cart-active');
+            document.getElementById('overlay').classList.toggle('hidden');
+        }
+
+        function sendWA() {
+            const nombre = document.getElementById('nombreCliente').value;
+            const dep = document.getElementById('departamento').value;
+            
+            if(!nombre || !dep) return alert("⚠️ Por favor, ingresa el nombre y departamento para la cotización.");
+            if(cart.length === 0) return alert("⚠️ Tu pedido está vacío.");
+
+            let msg = `*ZUNNY MOTOS - COTIZACIÓN MAYORISTA*\n\n`;
+            msg += `👤 *CLIENTE:* ${nombre.toUpperCase()}\n`;
+            msg += `📍 *UBICACIÓN:* ${dep.toUpperCase()}\n`;
+            msg += `--------------------------------\n`;
+            
+            cart.forEach(x => {
+                msg += `🛞 ${x.qty}x ${x.marca} ${x.medida} (${x.precio * x.qty} BS)\n`;
+            });
+            
+            msg += `--------------------------------\n💰 *TOTAL ESTIMADO: ${cart.reduce((a, b) => a + (b.precio*b.qty), 0)} BS*`;
+            
+            window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function filterCat(cat, btn) {
+            document.querySelectorAll('nav button').forEach(b => b.className = "text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap");
+            btn.className = "bg-green-500 text-black px-6 py-2 rounded-full text-xs font-black uppercase whitespace-nowrap";
+            render(cat === 'todas' ? db : db.filter(i => (i.categoria || 'llanta').toLowerCase() === cat));
+        }
+
+        init();
+    </script>
+</body>
+</html>
