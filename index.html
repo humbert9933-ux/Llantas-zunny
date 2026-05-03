@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: 'unsafe-inline'; img-src 'self' https: data:;">
+    
     <title>Zunny Motos | Cotizador Nacional Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
@@ -49,7 +51,21 @@
         <button onclick="filterCat('accesorio', this)" class="text-zinc-400 px-6 py-2 rounded-full text-xs font-bold uppercase whitespace-nowrap">Accesorios</button>
     </nav>
 
-    <main id="grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-6 pb-32"></main>
+    <main id="grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 px-6 pb-20"></main>
+
+    <footer class="max-w-6xl mx-auto px-6 py-12 border-t border-zinc-900 text-center space-y-4">
+        <div class="flex flex-col md:flex-row justify-center items-center gap-6">
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <span class="text-xs font-bold uppercase tracking-widest text-zinc-400">Santa Cruz de la Sierra, Bolivia</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+                <span class="text-xs font-bold uppercase tracking-widest text-zinc-400">+591 71483922</span>
+            </div>
+        </div>
+        <p class="text-[10px] text-zinc-600 uppercase font-black tracking-[0.3em]">© 2026 Zunny Motos | Grupo Limex SRL</p>
+    </footer>
 
     <button onclick="toggleCart()" class="fixed bottom-6 right-6 z-[60] bg-green-600 p-5 rounded-2xl shadow-2xl transition-all active:scale-90 border-2 border-green-400/20">
         <span id="badge" class="absolute -top-2 -right-2 bg-white text-green-700 font-black text-[10px] w-6 h-6 rounded-full flex items-center justify-center">0</span>
@@ -79,7 +95,6 @@
                     <option value="Beni">Beni</option>
                     <option value="Pando">Pando</option>
                 </select>
-
                 <select id="ciudad" class="form-input text-xs" disabled>
                     <option value="" disabled selected>Ciudad</option>
                 </select>
@@ -227,11 +242,15 @@
         }
 
         function sendWA() {
-            const n = document.getElementById('nombreCliente').value;
+            const n = document.getElementById('nombreCliente').value.trim();
             const d = document.getElementById('departamento').value;
             const c = document.getElementById('ciudad').value;
-            if(!n || !d || !c) return alert("⚠️ Llena tus datos de ubicación.");
-            if(cart.length === 0) return alert("⚠️ Pedido vacío.");
+            
+            // Validación de seguridad básica
+            if(n.length < 3) return alert("⚠️ Ingresa un nombre válido.");
+            if(!d || !c) return alert("⚠️ Selecciona tu ubicación completa.");
+            if(cart.length === 0) return alert("⚠️ Tu pedido está vacío.");
+
             document.getElementById('qrModal').classList.remove('hidden');
         }
 
@@ -239,21 +258,22 @@
         function finalizarTodo() { document.getElementById('qrModal').classList.add('hidden'); ejecutarEnvioWA(true); }
 
         function ejecutarEnvioWA(conPago) {
-            const n = document.getElementById('nombreCliente').value;
+            const n = document.getElementById('nombreCliente').value.trim();
             const d = document.getElementById('departamento').value;
             const c = document.getElementById('ciudad').value;
             const f = document.getElementById('quiereFactura').checked;
-            const rs = document.getElementById('razonSocial').value;
-            const nit = document.getElementById('nitCliente').value;
+            const rs = document.getElementById('razonSocial').value.trim();
+            const nit = document.getElementById('nitCliente').value.trim();
             const folio = `ZM-${new Date().getFullYear()}-${Math.random().toString(36).substring(2,6).toUpperCase()}`;
             
-            if(f && (!rs || !nit)) return alert("⚠️ NIT y Razón Social son obligatorios.");
+            if(f && (!rs || !nit)) return alert("⚠️ Datos de factura incompletos.");
 
             let msg = `*ZUNNY MOTOS - ${conPago ? 'PAGO CONFIRMADO' : 'NUEVO PEDIDO'}*\n🔖 *FOLIO:* ${folio}\n\n👤 *CLIENTE:* ${n.toUpperCase()}\n📍 *ORIGEN:* ${d} - ${c}\n`;
             if(f) msg += `📄 *FACTURA:* ${rs.toUpperCase()} (NIT: ${nit})\n`;
             msg += `--------------------------------\n`;
             cart.forEach(x => msg += `🛞 ${x.qty}x ${x.marca} ${x.medida} (${x.precio * x.qty} BS)\n`);
             msg += `\n💰 *TOTAL FINAL: ${cart.reduce((a, b) => a + (b.precio*b.qty), 0)} BS*`;
+            
             window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
